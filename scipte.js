@@ -83,7 +83,7 @@ const player = {
   mulDegats: 1.0,
   cadence: 1.0,
   rangeBonus: 0,
-  omniTirNiveau: 0, // 0 = Visée normale, 1 = 4 Directions, 2 = 8 Directions
+  omniTirNiveau: 0, // 0 = Normal, 1 = 4 Dirs, 2 = 8 Dirs
   gold: 50,
   level: 1,
   xp: 0,
@@ -113,8 +113,49 @@ const keys = {};
 window.addEventListener('keydown', e => { 
   initAudio();
   keys[e.key] = true; 
+
+  // --- GESTION DU MENU ---
+  if (gameState === "MENU") {
+    if (e.key === '1') { selectedWeapon = "Epee"; startGame(); }
+    if (e.key === '2') { selectedWeapon = "Arc"; startGame(); }
+    if (e.key === '3') { selectedWeapon = "Baton"; startGame(); }
+  } 
+  // --- GESTION DE LA BOUTIQUE ---
+  else if (gameState === "BOUTIQUE") {
+    if (e.key === '1' && player.gold >= 20) { player.gold -= 20; player.pv = Math.min(player.pvMax, player.pv + 30); }
+    if (e.key === '2' && player.gold >= 40) { player.gold -= 40; player.pvMax += 20; player.pv += 20; }
+    if (e.key === '3' && player.gold >= 50) { player.gold -= 50; player.bouclierMax += 25; player.bouclier += 25; }
+    if (e.key === '4' && player.gold >= 50) { player.gold -= 50; player.mulDegats += 0.2; }
+    if (e.key === '5' && player.gold >= 45) { player.gold -= 45; player.cadence += 0.25; }
+    if (e.key === '6' && player.gold >= 35) { player.gold -= 35; player.rangeBonus += 30; }
+    if (e.key === '7') {
+      if (player.omniTirNiveau === 0 && player.gold >= 100) {
+        player.gold -= 100;
+        player.omniTirNiveau = 1;
+      } else if (player.omniTirNiveau === 1 && player.gold >= 200) {
+        player.gold -= 200;
+        player.omniTirNiveau = 2;
+      }
+    }
+    if (e.key === '8' && player.gold >= 200) { player.gold -= 200; player.ulti = true; }
+
+    if (e.key === 'Enter' || e.key === ' ') {
+      gameState = "JEU";
+      spawnEnemies();
+    }
+  }
 });
+
 window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+function startGame() {
+  gameState = "JEU";
+  vague = 1;
+  player.pv = player.pvMax;
+  player.x = WIDTH / 2;
+  player.y = HEIGHT / 2;
+  spawnEnemies();
+}
 
 // --- GRAPHISMES 3D ISOMÉTRIQUES ---
 
@@ -174,13 +215,10 @@ function drawEntity3D(x, y, w, h, color, darkColor, isBoss = false) {
   }
 }
 
-// --- PARTICULES & SCREEN SHAKE ---
-
 function addParticles(x, y, color, count = 8) {
   for (let i = 0; i < count; i++) {
     particles.push({
-      x: x,
-      y: y,
+      x: x, y: y,
       vx: (Math.random() - 0.5) * 4,
       vy: (Math.random() - 0.5) * 4,
       life: 15 + Math.random() * 10,
@@ -244,18 +282,15 @@ function shoot(dx, dy, degats, color) {
   playSound('shoot');
 
   if (player.omniTirNiveau === 1) {
-    // 4 Directions
     const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     dirs.forEach(d => createSingleProjectile(d[0], d[1], degats, color));
   } else if (player.omniTirNiveau === 2) {
-    // 8 Directions
     const dirs = [
       [1, 0], [-1, 0], [0, 1], [0, -1],
       [0.707, 0.707], [-0.707, 0.707], [0.707, -0.707], [-0.707, -0.707]
     ];
     dirs.forEach(d => createSingleProjectile(d[0], d[1], degats, color));
   } else {
-    // Visée normale
     createSingleProjectile(dx, dy, degats, color);
   }
 }
@@ -311,7 +346,7 @@ function handleInput() {
   player.x = Math.max(10, Math.min(WIDTH - 30, player.x));
   player.y = Math.max(30, Math.min(HEIGHT - 40, player.y));
 
-  // Tir continu
+  // Tir continu avec Espace
   if (keys[' '] && player.cdTir <= 0) {
     let dmg = selectedWeapon === "Epee" ? 25 : (selectedWeapon === "Arc" ? 18 : 15);
     let col = selectedWeapon === "Epee" ? '#00FFFF' : (selectedWeapon === "Arc" ? '#FFF' : '#FFA500');
@@ -357,7 +392,6 @@ function update() {
   if (player.cdDash > 0) player.cdDash--;
   if (player.cdTir > 0) player.cdTir--;
 
-  // Particules
   particles.forEach((p, i) => {
     p.x += p.vx;
     p.y += p.vy;
@@ -365,7 +399,6 @@ function update() {
     if (p.life <= 0) particles.splice(i, 1);
   });
 
-  // Projectiles Joueur
   projectiles.forEach((p, index) => {
     p.x += p.vx;
     p.y += p.vy;
@@ -384,7 +417,6 @@ function update() {
     if (p.life <= 0) projectiles.splice(index, 1);
   });
 
-  // Projectiles Ennemis (Squelettes)
   enemyProjectiles.forEach((ep, index) => {
     ep.x += ep.vx;
     ep.y += ep.vy;
@@ -400,7 +432,6 @@ function update() {
     if (ep.life <= 0) enemyProjectiles.splice(index, 1);
   });
 
-  // Ramassage des Gemmes d'XP
   gems.forEach((g, i) => {
     let dist = Math.hypot((player.x + 10) - g.x, (player.y + 10) - g.y);
     if (dist < 25) {
@@ -410,7 +441,6 @@ function update() {
     }
   });
 
-  // Monstres
   monstres.forEach((m, index) => {
     if (m.pv <= 0) {
       player.gold += m.type === "BOSS" ? 100 : 15;
@@ -424,7 +454,6 @@ function update() {
     let dy = player.y - m.y;
     let dist = Math.hypot(dx, dy);
 
-    // Attaque à distance Squelette
     if (m.type === "Squelette") {
       m.cdAttaque = (m.cdAttaque || 0) + 1;
       if (dist > 120) {
@@ -453,7 +482,6 @@ function update() {
     }
   });
 
-  // Fin de vague
   if (monstres.length === 0 && gems.length === 0) {
     vague++;
     gameState = "BOUTIQUE";
@@ -474,19 +502,16 @@ function drawUI() {
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   ctx.fillRect(0, 0, WIDTH, 40);
 
-  // Barre de vie
   ctx.fillStyle = '#555';
   ctx.fillRect(10, 8, 140, 14);
   ctx.fillStyle = '#00FF00';
   ctx.fillRect(10, 8, Math.max(0, (player.pv / player.pvMax) * 140), 14);
 
-  // Bouclier
   if (player.bouclierMax > 0) {
     ctx.fillStyle = '#00BFFF';
     ctx.fillRect(10, 8, Math.max(0, (player.bouclier / player.bouclierMax) * 140), 4);
   }
 
-  // Barre d'XP
   ctx.fillStyle = '#333';
   ctx.fillRect(10, 24, 140, 8);
   ctx.fillStyle = '#00FFFF';
@@ -503,7 +528,6 @@ function drawUI() {
   ctx.fillStyle = '#FFF';
   ctx.fillText(`Arme: ${selectedWeapon}`, 410, 22);
 
-  // Dash Cooldown Indicator
   let dashPct = 1 - (player.cdDash / player.cdDashMax);
   ctx.fillStyle = dashPct >= 1 ? '#3388FF' : '#555';
   ctx.fillRect(540, 10, 80, 20);
@@ -592,11 +616,10 @@ function render() {
     return;
   }
 
-  // Terrain & Décor
+  // Rendu Jeu
   drawGround3D();
   trees.forEach(t => drawTree3D(t.x, t.y));
 
-  // Gemmes d'XP au sol
   gems.forEach(g => {
     ctx.fillStyle = '#00FFFF';
     ctx.beginPath();
@@ -604,23 +627,19 @@ function render() {
     ctx.fill();
   });
 
-  // Particules
   particles.forEach(p => {
     ctx.fillStyle = p.color;
     ctx.fillRect(p.x, p.y, 3, 3);
   });
 
-  // Joueur
   drawEntity3D(player.x, player.y, 20, 24, '#3388FF', '#0044AA');
 
-  // Ennemis
   monstres.forEach(m => {
     let col = m.type === "Gobelin" ? '#32CD32' : (m.type === "Orc" ? '#FF4500' : (m.type === "Squelette" ? '#DDD' : '#8A2BE2'));
     let darkCol = m.type === "Gobelin" ? '#006400' : (m.type === "Orc" ? '#8B0000' : '#888');
     drawEntity3D(m.x, m.y, m.size, m.size, col, darkCol, m.type === "BOSS");
   });
 
-  // Projectiles Joueur
   projectiles.forEach(p => {
     ctx.fillStyle = p.color;
     ctx.beginPath();
@@ -628,7 +647,6 @@ function render() {
     ctx.fill();
   });
 
-  // Projectiles Ennemis
   enemyProjectiles.forEach(ep => {
     ctx.fillStyle = '#FF0055';
     ctx.beginPath();
@@ -636,7 +654,6 @@ function render() {
     ctx.fill();
   });
 
-  // Popups de dégâts
   popups.forEach((p, i) => {
     ctx.fillStyle = p.col;
     ctx.font = '13px bold sans-serif';
@@ -646,7 +663,6 @@ function render() {
     if (p.life <= 0) popups.splice(i, 1);
   });
 
-  // Trou Noir (Ultime)
   if (blackHoleAnimation) {
     ctx.fillStyle = 'rgba(75, 0, 130, 0.4)';
     ctx.beginPath();
@@ -668,38 +684,6 @@ function render() {
   ctx.restore();
 }
 
-// Entrées Menu / Boutique
-window.addEventListener('keydown', e => {
-  if (gameState === "MENU") {
-    if (e.key === '1') { selectedWeapon = "Epee"; gameState = "JEU"; spawnEnemies(); }
-    if (e.key === '2') { selectedWeapon = "Arc"; gameState = "JEU"; spawnEnemies(); }
-    if (e.key === '3') { selectedWeapon = "Baton"; gameState = "JEU"; spawnEnemies(); }
-  } else if (gameState === "BOUTIQUE") {
-    if (e.key === '1' && player.gold >= 20) { player.gold -= 20; player.pv = Math.min(player.pvMax, player.pv + 30); }
-    if (e.key === '2' && player.gold >= 40) { player.gold -= 40; player.pvMax += 20; player.pv += 20; }
-    if (e.key === '3' && player.gold >= 50) { player.gold -= 50; player.bouclierMax += 25; player.bouclier += 25; }
-    if (e.key === '4' && player.gold >= 50) { player.gold -= 50; player.mulDegats += 0.2; }
-    if (e.key === '5' && player.gold >= 45) { player.gold -= 45; player.cadence += 0.25; }
-    if (e.key === '6' && player.gold >= 35) { player.gold -= 35; player.rangeBonus += 30; }
-    if (e.key === '7') {
-      if (player.omniTirNiveau === 0 && player.gold >= 100) {
-        player.gold -= 100;
-        player.omniTirNiveau = 1;
-      } else if (player.omniTirNiveau === 1 && player.gold >= 200) {
-        player.gold -= 200;
-        player.omniTirNiveau = 2;
-      }
-    }
-    if (e.key === '8' && player.gold >= 200) { player.gold -= 200; player.ulti = true; }
-
-    if (e.key === 'Enter' || e.key === ' ') {
-      gameState = "JEU";
-      spawnEnemies();
-    }
-  }
-});
-
-// Boucle Principale
 function gameLoop() {
   update();
   render();
