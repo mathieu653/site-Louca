@@ -63,15 +63,14 @@
   </div>
 
   <div class="controls-hint">
-    <p>Déplacement : <span class="key">Flèches</span> ou <span class="key">ZQSD</span> | Tir : <span class="key">Espace</span> | Dash : <span class="key">Shift</span></p>
-    <p>Sorts : <span class="key">&amp; (1)</span>, <span class="key">&eacute; (2)</span>, <span class="key">" (3)</span> | Ultime : <span class="key">R</span> | Boutique : <span class="key">B</span></p>
+    <p>Déplacement : <span class="key">Flèches</span> / <span class="key">ZQSD</span> | Tir continu : Maintenir <span class="key">Espace</span> | Dash : <span class="key">Shift</span></p>
+    <p>Ultime : <span class="key">R</span> | Boutique : Automatique après chaque vague (ou touche <span class="key">B</span>)</p>
   </div>
 
   <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Configuration de l'échelle (Simule la résolution rétro tout en restant fluide)
     const WIDTH = 640;
     const HEIGHT = 480;
 
@@ -96,10 +95,8 @@
       sk2: false,
       sk3: false,
       ulti: false,
-      cd1: 0,
-      cd2: 0,
-      cd3: 0,
-      cdDash: 0
+      cdDash: 0,
+      cdTir: 0 // Anti-rafale pour le tir continu
     };
 
     let vague = 1;
@@ -117,14 +114,12 @@
     // --- DESSIN ET GRAPHISMES 3D ISOMÉTRIQUES ---
 
     function drawGround3D() {
-      // Sol Herbe avec grille 3D
       ctx.fillStyle = '#228B22';
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
       ctx.strokeStyle = '#2eb82e';
       ctx.lineWidth = 1;
       
-      // Grille en perspective
       for (let y = 0; y < HEIGHT; y += 30) {
         ctx.beginPath();
         ctx.moveTo(0, y);
@@ -134,19 +129,16 @@
     }
 
     function drawTree3D(x, y) {
-      // Ombre
       ctx.fillStyle = 'rgba(0, 40, 0, 0.4)';
       ctx.beginPath();
       ctx.ellipse(x + 15, y + 50, 20, 8, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Tronc 3D
       ctx.fillStyle = '#4a2f13';
       ctx.fillRect(x + 10, y + 20, 10, 30);
       ctx.fillStyle = '#654321';
       ctx.fillRect(x + 13, y + 20, 7, 30);
 
-      // Feuillage multi-couche
       ctx.fillStyle = '#005500';
       ctx.beginPath(); ctx.arc(x + 15, y + 15, 22, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#228B22';
@@ -161,22 +153,18 @@
     ];
 
     function drawEntity3D(x, y, w, h, color, darkColor, isBoss = false) {
-      // Ombre portée
       ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
       ctx.beginPath();
       ctx.ellipse(x + w / 2, y + h, w / 2, h / 4, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Face latérale (Effet 3D d'épaisseur)
       ctx.fillStyle = darkColor;
       ctx.fillRect(x, y + 5, w, h);
 
-      // Face avant
       ctx.fillStyle = color;
       ctx.fillRect(x, y, w, h - 3);
 
       if (isBoss) {
-        // Cœur du Boss
         ctx.fillStyle = '#FFD700';
         ctx.fillRect(x + w/4, y + h/4, w/2, h/2);
       }
@@ -247,16 +235,17 @@
         player.dirY = moveY;
       }
 
-      // Limites de carte
       player.x = Math.max(10, Math.min(WIDTH - 30, player.x));
       player.y = Math.max(30, Math.min(HEIGHT - 40, player.y));
 
-      // Attaque normale
-      if (keys[' ']) {
-        keys[' '] = false; // Anti-rafale
+      // Tir continu en maintenant Espace
+      if (keys[' '] && player.cdTir <= 0) {
         let dmg = selectedWeapon === "Epee" ? 25 : (selectedWeapon === "Arc" ? 18 : 15);
         let col = selectedWeapon === "Epee" ? '#00FFFF' : (selectedWeapon === "Arc" ? '#FFF' : '#FFA500');
         shoot(player.dirX, player.dirY, dmg, col);
+        
+        // Cadence de tir selon l'arme
+        player.cdTir = selectedWeapon === "Epee" ? 10 : (selectedWeapon === "Arc" ? 8 : 12);
       }
 
       // Ultime (Touche R)
@@ -265,7 +254,7 @@
         triggerUltimate();
       }
 
-      // Boutique (Touche B)
+      // Ouverture manuelle de la boutique (Touche B)
       if (keys['b'] || keys['B']) {
         keys['b'] = keys['B'] = false;
         gameState = "BOUTIQUE";
@@ -291,6 +280,7 @@
 
       // Timers Cooldowns
       if (player.cdDash > 0) player.cdDash--;
+      if (player.cdTir > 0) player.cdTir--;
 
       // Mise à jour projectiles
       projectiles.forEach((p, index) => {
@@ -298,7 +288,6 @@
         p.y += p.vy;
         p.life--;
 
-        // Collision Monstres
         monstres.forEach(m => {
           if (p.x > m.x && p.x < m.x + m.size && p.y > m.y && p.y < m.y + m.size) {
             m.pv -= p.degats;
@@ -318,30 +307,27 @@
           return;
         }
 
-        // Déplacement vers le joueur
         if (m.x < player.x) m.x += m.speed;
         if (m.x > player.x) m.x -= m.speed;
         if (m.y < player.y) m.y += m.speed;
         if (m.y > player.y) m.y -= m.speed;
 
-        // Collision Joueur
         if (Math.abs(m.x - player.x) < 20 && Math.abs(m.y - player.y) < 20) {
           player.pv -= 0.5;
           if (player.pv <= 0) gameState = "GAMEOVER";
         }
       });
 
-      // Vague suivante
+      // Vague terminée : Ouverture automatique de la boutique
       if (monstres.length === 0) {
         vague++;
-        spawnEnemies();
+        gameState = "BOUTIQUE";
       }
     }
 
     // --- RENDU GLOBALE ---
 
     function drawUI() {
-      // Barre de vie
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, WIDTH, 35);
 
@@ -390,18 +376,19 @@
 
         ctx.fillStyle = '#FFD700';
         ctx.font = '24px sans-serif';
-        ctx.fillText("--- BOUTIQUE MAGIQUE ---", 180, 60);
-        ctx.fillText(`Votre Or : ${player.gold}g`, 240, 100);
+        ctx.fillText(`--- VAGUE ${vague - 1} TERMINÉE ! ---`, 170, 50);
+        ctx.fillText(`Votre Or : ${player.gold}g`, 250, 90);
 
         ctx.fillStyle = '#FFF';
         ctx.font = '16px sans-serif';
-        ctx.fillText("1. Soin +30 PV (20g)", 150, 160);
-        ctx.fillText("2. +20 PV Max (40g)", 150, 200);
-        ctx.fillText("3. +20% Dégâts (50g)", 150, 240);
-        ctx.fillText("4. Débloquer Ultime (200g)", 150, 280);
+        ctx.fillText("1. Soin +30 PV (20g)", 150, 150);
+        ctx.fillText("2. +20 PV Max (40g)", 150, 190);
+        ctx.fillText("3. +20% Dégâts (50g)", 150, 230);
+        ctx.fillText("4. Débloquer Ultime (200g)", 150, 270);
 
         ctx.fillStyle = '#4caf50';
-        ctx.fillText("Appuyez sur B pour retourner au jeu", 180, 360);
+        ctx.font = '18px bold sans-serif';
+        ctx.fillText("Appuyez sur [Entrée] ou [Espace] pour lancer la Vague " + vague, 80, 340);
         return;
       }
 
@@ -470,7 +457,7 @@
       drawUI();
     }
 
-    // Gestion touches menu
+    // Gestion des touches pour les Menus / Boutique
     window.addEventListener('keydown', e => {
       if (gameState === "MENU") {
         if (e.key === '1') { selectedWeapon = "Epee"; gameState = "JEU"; spawnEnemies(); }
@@ -481,6 +468,12 @@
         if (e.key === '2' && player.gold >= 40) { player.gold -= 40; player.pvMax += 20; player.pv += 20; }
         if (e.key === '3' && player.gold >= 50) { player.gold -= 50; player.mulDegats += 0.2; }
         if (e.key === '4' && player.gold >= 200) { player.gold -= 200; player.ulti = true; }
+        
+        // Entrée ou Espace pour fermer la boutique et démarrer la vague
+        if (e.key === 'Enter' || e.key === ' ') {
+          gameState = "JEU";
+          spawnEnemies();
+        }
       }
     });
 
