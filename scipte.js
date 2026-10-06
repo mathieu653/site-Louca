@@ -27,11 +27,11 @@ function playSound(type) {
   if (type === 'shoot') {
     osc.type = 'square';
     osc.frequency.setValueAtTime(400, now);
-    osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+    osc.frequency.exponentialRampToValueAtTime(100, now + 0.08);
     gain.gain.setValueAtTime(0.1, now);
-    gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+    gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
     osc.start(now);
-    osc.stop(now + 0.1);
+    osc.stop(now + 0.08);
   } else if (type === 'hit') {
     osc.type = 'sawtooth';
     osc.frequency.setValueAtTime(150, now);
@@ -77,10 +77,13 @@ const player = {
   y: HEIGHT / 2,
   pvMax: 100,
   pv: 100,
+  bouclierMax: 0,
+  bouclier: 0,
   vitesse: 3.5,
   mulDegats: 1.0,
   cadence: 1.0,
-  nbTirs: 1,
+  rangeBonus: 0,
+  omniTirNiveau: 0, // 0 = Visée normale, 1 = 4 Directions, 2 = 8 Directions
   gold: 50,
   level: 1,
   xp: 0,
@@ -224,26 +227,52 @@ function spawnEnemies() {
   }
 }
 
+function createSingleProjectile(dx, dy, degats, color) {
+  let len = Math.hypot(dx, dy) || 1;
+  projectiles.push({
+    x: player.x + 10,
+    y: player.y + 10,
+    vx: (dx / len) * 7,
+    vy: (dy / len) * 7,
+    degats: degats * player.mulDegats,
+    color: color,
+    life: 45 + player.rangeBonus
+  });
+}
+
 function shoot(dx, dy, degats, color) {
   playSound('shoot');
 
-  let baseAngle = Math.atan2(dy, dx);
-  let spreadAngle = 0.2; // Écart pour tirs multiples
-
-  let startIdx = -(player.nbTirs - 1) / 2;
-
-  for (let i = 0; i < player.nbTirs; i++) {
-    let angle = baseAngle + (startIdx + i) * spreadAngle;
-    projectiles.push({
-      x: player.x + 10,
-      y: player.y + 10,
-      vx: Math.cos(angle) * 7,
-      vy: Math.sin(angle) * 7,
-      degats: degats * player.mulDegats,
-      color: color,
-      life: 45
-    });
+  if (player.omniTirNiveau === 1) {
+    // 4 Directions
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    dirs.forEach(d => createSingleProjectile(d[0], d[1], degats, color));
+  } else if (player.omniTirNiveau === 2) {
+    // 8 Directions
+    const dirs = [
+      [1, 0], [-1, 0], [0, 1], [0, -1],
+      [0.707, 0.707], [-0.707, 0.707], [0.707, -0.707], [-0.707, -0.707]
+    ];
+    dirs.forEach(d => createSingleProjectile(d[0], d[1], degats, color));
+  } else {
+    // Visée normale
+    createSingleProjectile(dx, dy, degats, color);
   }
+}
+
+function takeDamage(amount) {
+  if (player.bouclier > 0) {
+    if (player.bouclier >= amount) {
+      player.bouclier -= amount;
+      amount = 0;
+    } else {
+      amount -= player.bouclier;
+      player.bouclier = 0;
+    }
+  }
+
+  player.pv -= amount;
+  if (player.pv <= 0) checkGameOver();
 }
 
 function addXP(amount) {
@@ -362,11 +391,10 @@ function update() {
     ep.life--;
 
     if (Math.abs(ep.x - (player.x + 10)) < 15 && Math.abs(ep.y - (player.y + 10)) < 15) {
-      player.pv -= 10;
+      takeDamage(10);
       triggerShake(8);
       playSound('hit');
       ep.life = 0;
-      if (player.pv <= 0) checkGameOver();
     }
 
     if (ep.life <= 0) enemyProjectiles.splice(index, 1);
@@ -420,9 +448,8 @@ function update() {
     }
 
     if (dist < 20) {
-      player.pv -= 0.4;
+      takeDamage(0.4);
       triggerShake(3);
-      if (player.pv <= 0) checkGameOver();
     }
   });
 
@@ -441,17 +468,23 @@ function checkGameOver() {
   }
 }
 
-// --- RENDU GLOBALE ---
+// --- RENDU GLOBAL ---
 
 function drawUI() {
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   ctx.fillRect(0, 0, WIDTH, 40);
 
-  // Bar de vie
+  // Barre de vie
   ctx.fillStyle = '#555';
   ctx.fillRect(10, 8, 140, 14);
   ctx.fillStyle = '#00FF00';
   ctx.fillRect(10, 8, Math.max(0, (player.pv / player.pvMax) * 140), 14);
+
+  // Bouclier
+  if (player.bouclierMax > 0) {
+    ctx.fillStyle = '#00BFFF';
+    ctx.fillRect(10, 8, Math.max(0, (player.bouclier / player.bouclierMax) * 140), 4);
+  }
 
   // Barre d'XP
   ctx.fillStyle = '#333';
@@ -518,22 +551,28 @@ function render() {
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
     ctx.fillStyle = '#FFD700';
-    ctx.font = '22px sans-serif';
-    ctx.fillText(`--- VAGUE ${vague - 1} TERMINÉE ! ---`, 180, 45);
-    ctx.fillText(`Votre Or : ${player.gold}g`, 250, 80);
+    ctx.font = '20px sans-serif';
+    ctx.fillText(`--- VAGUE ${vague - 1} TERMINÉE ! ---`, 180, 35);
+    ctx.fillText(`Votre Or : ${player.gold}g`, 250, 65);
 
     ctx.fillStyle = '#FFF';
-    ctx.font = '15px sans-serif';
-    ctx.fillText("1. Soin +30 PV (20g)", 140, 130);
-    ctx.fillText("2. +20 PV Max (40g)", 140, 170);
-    ctx.fillText("3. +20% Dégâts (50g)", 140, 210);
-    ctx.fillText("4. +25% Cadence de Tir (45g)", 140, 250);
-    ctx.fillText(`5. Tir Multiple (+1 tir) [Max 3] (${player.nbTirs * 75}g)`, 140, 290);
-    ctx.fillText("6. Débloquer Ultime (200g)", 140, 330);
+    ctx.font = '13px sans-serif';
+    ctx.fillText("1. Soin +30 PV (20g)", 100, 105);
+    ctx.fillText("2. +20 PV Max (40g)", 100, 135);
+    ctx.fillText("3. +25 Bouclier (50g)", 100, 165);
+    ctx.fillText("4. +20% Dégâts (50g)", 100, 195);
+    ctx.fillText("5. +25% Vitesse d'Attaque (45g)", 100, 225);
+    ctx.fillText("6. +30 Portée (Range) (35g)", 100, 255);
+
+    let omniText = player.omniTirNiveau === 0 ? "7. Tir 4 Directions (100g)" :
+                   (player.omniTirNiveau === 1 ? "7. Tir 8 Directions (Diagonales) (200g)" : "7. Tir Omnidirectionnel MAX");
+    ctx.fillText(omniText, 100, 285);
+
+    ctx.fillText("8. Débloquer Ultime (200g)", 100, 315);
 
     ctx.fillStyle = '#4caf50';
-    ctx.font = '17px bold sans-serif';
-    ctx.fillText("Appuyez sur [Entrée] ou [Espace] pour lancer la Vague " + vague, 80, 395);
+    ctx.font = '16px bold sans-serif';
+    ctx.fillText("Appuyez sur [Entrée] ou [Espace] pour lancer la Vague " + vague, 80, 380);
     ctx.restore();
     return;
   }
@@ -638,13 +677,20 @@ window.addEventListener('keydown', e => {
   } else if (gameState === "BOUTIQUE") {
     if (e.key === '1' && player.gold >= 20) { player.gold -= 20; player.pv = Math.min(player.pvMax, player.pv + 30); }
     if (e.key === '2' && player.gold >= 40) { player.gold -= 40; player.pvMax += 20; player.pv += 20; }
-    if (e.key === '3' && player.gold >= 50) { player.gold -= 50; player.mulDegats += 0.2; }
-    if (e.key === '4' && player.gold >= 45) { player.gold -= 45; player.cadence += 0.25; }
-    if (e.key === '5' && player.nbTirs < 3 && player.gold >= player.nbTirs * 75) {
-      player.gold -= player.nbTirs * 75;
-      player.nbTirs++;
+    if (e.key === '3' && player.gold >= 50) { player.gold -= 50; player.bouclierMax += 25; player.bouclier += 25; }
+    if (e.key === '4' && player.gold >= 50) { player.gold -= 50; player.mulDegats += 0.2; }
+    if (e.key === '5' && player.gold >= 45) { player.gold -= 45; player.cadence += 0.25; }
+    if (e.key === '6' && player.gold >= 35) { player.gold -= 35; player.rangeBonus += 30; }
+    if (e.key === '7') {
+      if (player.omniTirNiveau === 0 && player.gold >= 100) {
+        player.gold -= 100;
+        player.omniTirNiveau = 1;
+      } else if (player.omniTirNiveau === 1 && player.gold >= 200) {
+        player.gold -= 200;
+        player.omniTirNiveau = 2;
+      }
     }
-    if (e.key === '6' && player.gold >= 200) { player.gold -= 200; player.ulti = true; }
+    if (e.key === '8' && player.gold >= 200) { player.gold -= 200; player.ulti = true; }
 
     if (e.key === 'Enter' || e.key === ' ') {
       gameState = "JEU";
