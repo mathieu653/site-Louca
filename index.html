@@ -1,24 +1,974 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Forêt Magique 3D - Edition Ultime</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forêt Magique - PC Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body {
+            background-color: #0d1117;
+            color: #f0f6fc;
+            font-family: 'Press Start 2P', monospace, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            box-shadow: 0 0 25px rgba(0, 255, 128, 0.2);
+            background-color: #000;
+        }
+
+        .btn-arcade {
+            transition: all 0.1s ease;
+            box-shadow: 0 4px 0 #1b2838;
+        }
+
+        .btn-arcade:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #1b2838;
+        }
+
+        /* Custom Scrollbar for side panel if needed */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #238636;
+            border-radius: 3px;
+        }
+    </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col items-center justify-center p-2 md:p-4">
 
-  <h1>🌲 Forêt Magique 3D 🌲</h1>
+    <!-- Header Title -->
+    <header class="text-center mb-3">
+        <h1 class="text-xl md:text-3xl font-extrabold text-green-400 tracking-wider drop-shadow-md">
+            🌲 FORÊT MAGIQUE 🌲
+        </h1>
+        <p class="text-[10px] md:text-xs text-gray-400 mt-1">NumWorks PC Port • Retro Action RPG</p>
+    </header>
 
-  <div id="game-container">
-    <canvas id="gameCanvas" width="640" height="480"></canvas>
-  </div>
+    <!-- Main Game Wrapper -->
+    <main class="flex flex-col lg:flex-row items-center justify-center gap-4 w-full max-w-6xl">
+        
+        <!-- Canvas Game Frame -->
+        <div class="relative flex flex-col items-center bg-gray-900 p-2 md:p-4 rounded-xl border-2 border-green-600 shadow-2xl">
+            
+            <canvas id="gameCanvas" width="320" height="240" class="w-[320px] h-[240px] sm:w-[480px] sm:h-[360px] md:w-[640px] md:h-[480px] rounded border border-gray-800 cursor-crosshair"></canvas>
 
-  <div class="controls-hint">
-    <p>Déplacement : <span class="key">Flèches</span> / <span class="key">ZQSD</span> | Tir continu : Maintenir <span class="key">Espace</span> | Dash : <span class="key">Shift</span></p>
-    <p>Ultime : <span class="key">R</span> | Boutique : Automatique après chaque vague (ou touche <span class="key">B</span>)</p>
-  </div>
+            <!-- Touch / Quick On-Screen Action Bar (Mobile & Quick Click) -->
+            <div class="mt-3 grid grid-cols-6 gap-1 w-full max-w-[640px] text-[9px]">
+                <button id="btnAtk" class="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded btn-arcade font-bold col-span-2">
+                    ⚔️ ATTAQUE (E / Space / Click)
+                </button>
+                <button id="btnSk1" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded btn-arcade font-bold">
+                    1️⃣ S1
+                </button>
+                <button id="btnSk2" class="bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded btn-arcade font-bold">
+                    2️⃣ S2
+                </button>
+                <button id="btnSk3" class="bg-amber-600 hover:bg-amber-500 text-white p-2 rounded btn-arcade font-bold">
+                    3️⃣ S3
+                </button>
+                <button id="btnUlt" class="bg-purple-700 hover:bg-purple-600 text-white p-2 rounded btn-arcade font-bold">
+                    💥 ULT
+                </button>
+            </div>
+        </div>
 
-  <script src="script.js"></script>
+        <!-- Controls & Information Side Panel -->
+        <div class="bg-gray-900 border border-gray-800 p-4 rounded-xl w-full lg:w-80 text-xs flex flex-col justify-between self-stretch">
+            <div>
+                <h2 class="text-sm text-yellow-400 border-b border-gray-700 pb-2 mb-3 flex items-center gap-2">
+                    <span>🎮</span> CONTRÔLES PC
+                </h2>
+                <ul class="space-y-2 text-[10px] text-gray-300">
+                    <li class="flex justify-between"><span class="text-green-400">Déplacement:</span> <span>Flèches / WASD</span></li>
+                    <li class="flex justify-between"><span class="text-cyan-400">Dash / Télép.:</span> <span>'0' / Espace</span></li>
+                    <li class="flex justify-between"><span class="text-blue-400">Attaque de Base:</span> <span>E / Entrée / Clic</span></li>
+                    <li class="flex justify-between"><span class="text-indigo-400">Sort 1:</span> <span>Touche 1</span></li>
+                    <li class="flex justify-between"><span class="text-emerald-400">Sort 2:</span> <span>Touche 2</span></li>
+                    <li class="flex justify-between"><span class="text-amber-400">Sort 3:</span> <span>Touche 3</span></li>
+                    <li class="flex justify-between"><span class="text-purple-400">ULTIME:</span> <span>Maj (Shift)</span></li>
+                    <li class="flex justify-between border-t border-gray-800 pt-2"><span class="text-yellow-300">Boutique:</span> <span>Touches 1-6 / OK / Backspace</span></li>
+                </ul>
+            </div>
+
+            <!-- Sound Toggle & Audio Disclaimer -->
+            <div class="mt-4 pt-3 border-t border-gray-800 flex items-center justify-between">
+                <span class="text-[10px] text-gray-400">Effets Sonores Synthé:</span>
+                <button id="toggleAudio" class="bg-gray-800 text-green-400 px-2 py-1 rounded text-[10px] hover:bg-gray-700 border border-green-800">
+                    🔊 ON
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Web Audio Synth for 8-bit retro sound effects
+        let audioEnabled = true;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioCtx();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioEnabled) return;
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'shoot') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'hit') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.linearRampToValueAtTime(40, now + 0.08);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'buy') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'ult') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.4);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'powerup') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.linearRampToValueAtTime(600, now + 0.15);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        document.getElementById('toggleAudio').addEventListener('click', (e) => {
+            audioEnabled = !audioEnabled;
+            e.target.innerText = audioEnabled ? '🔊 ON' : '🔇 OFF';
+            if (audioEnabled) initAudio();
+        });
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const LARGEUR = 320;
+        const HAUTEUR = 240;
+
+        // Colors strictly matching NumWorks palette
+        const COLOR_NOIR = '#000000';
+        const COLOR_BLANC = '#FFFFFF';
+        const COLOR_ROUGE = 'rgb(220, 40, 40)';
+        const COLOR_VERT_HERBE = 'rgb(34, 139, 34)';
+        const COLOR_VERT_FONCE = 'rgb(0, 100, 0)';
+        const COLOR_MARRON = 'rgb(101, 67, 33)';
+        const COLOR_BLEU = 'rgb(50, 150, 255)';
+        const COLOR_JAUNE = 'rgb(255, 220, 0)';
+        const COLOR_ORANGE = 'rgb(255, 140, 0)';
+        const COLOR_CYAN = 'rgb(0, 255, 255)';
+        const COLOR_GRIS = 'rgb(120, 120, 120)';
+        const COLOR_GRIS_FONCE = 'rgb(60, 60, 60)';
+        const COLOR_VERT_GOBELIN = 'rgb(50, 205, 50)';
+        const COLOR_VIOLET = 'rgb(148, 0, 211)';
+
+        const ARBRES = [[30, 40], [100, 140], [220, 50], [260, 150]];
+
+        // Game state variables
+        let gameState = 'MENU'; // 'MENU', 'GAME', 'SHOP', 'GAMEOVER'
+        let menuSelectedWeapon = 'Epee'; // 'Epee', 'Arc', 'Baton'
+
+        let px = 150, py = 110;
+        let pvMax = 100, pv = 100;
+        let vitesseBase = 3;
+        let mulDegats = 1.0;
+        let porteeBonus = 0;
+        let orJoueur = 20;
+        let nbTirs = 1;
+
+        let sk1Debloque = false;
+        let sk2Debloque = false;
+        let sk3Debloque = false;
+        let ultiDebloque = false;
+
+        let boostVitesseTimer = 0;
+        let boostDegatsTimer = 0;
+        let gelMonstresTimer = 0;
+
+        let cd1 = 0, cd2 = 0, cd3 = 0, cdDash = 0;
+        let maxCd1 = 15;
+        let maxCd2 = 30;
+        let maxCd3 = 50;
+
+        let vague = 1;
+        let shopPage = 1;
+
+        let dirX = 1, dirY = 0;
+
+        let monstres = [];
+        let blocsBonus = [];
+        let projectiles = [];
+        let projEnnemis = [];
+        let popups = [];
+
+        // Key states
+        const keys = {};
+
+        window.addEventListener('keydown', (e) => {
+            initAudio();
+            keys[e.code] = true;
+            handleGlobalKeyPress(e.code, e.key);
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        function fillRect(x, y, w, h, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
+        }
+
+        function drawString(text, x, y, color, bgColor = null) {
+            ctx.font = '8px "Press Start 2P", monospace';
+            if (bgColor) {
+                const width = ctx.measureText(text).width;
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(Math.floor(x), Math.floor(y), width, 9);
+            }
+            ctx.fillStyle = color;
+            ctx.textBaseline = 'top';
+            ctx.fillText(text, Math.floor(x), Math.floor(y));
+        }
+
+        function dessinerArbre(ax, ay) {
+            fillRect(ax + 8, ay + 12, 8, 18, COLOR_MARRON);
+            fillRect(ax, ay, 24, 15, COLOR_VERT_FONCE);
+        }
+
+        function effacerZone(x, y, w, h) {
+            fillRect(x, y, w, h, COLOR_VERT_HERBE);
+        }
+
+        function dessinerDecorComplet() {
+            fillRect(0, 0, LARGEUR, HAUTEUR, COLOR_NOIR);
+            fillRect(0, 20, LARGEUR, HAUTEUR - 40, COLOR_VERT_HERBE);
+            for (let [ax, ay] of ARBRES) {
+                dessinerArbre(ax, ay);
+            }
+        }
+
+        function dessinerStickman(x, y, couleur) {
+            fillRect(x + 3, y, 4, 4, couleur);
+            fillRect(x + 4, y + 4, 2, 8, couleur);
+            fillRect(x + 2, y + 12, 2, 4, couleur);
+            fillRect(x + 6, y + 12, 2, 4, couleur);
+        }
+
+        function dessinerMonstre(m) {
+            let mx = m[0], my = m[1], t = m[3];
+            if (t === "Gobelin") {
+                fillRect(mx + 2, my + 4, 6, 6, COLOR_VERT_GOBELIN);
+                fillRect(mx, my + 4, 2, 2, COLOR_VERT_GOBELIN);
+                fillRect(mx + 8, my + 4, 2, 2, COLOR_VERT_GOBELIN);
+            } else if (t === "Orc") {
+                fillRect(mx, my, 12, 12, COLOR_ROUGE);
+                fillRect(mx + 2, my + 2, 8, 4, COLOR_MARRON);
+            } else if (t === "Sorcier") {
+                fillRect(mx + 3, my, 4, 3, COLOR_VIOLET);
+                fillRect(mx + 1, my + 3, 8, 9, COLOR_VIOLET);
+                fillRect(mx + 3, my + 5, 2, 2, COLOR_JAUNE);
+            } else if (t === "BOSS") {
+                fillRect(mx, my, 24, 24, COLOR_VIOLET);
+                fillRect(mx + 4, my + 4, 16, 16, COLOR_NOIR);
+                fillRect(mx + 8, my + 8, 8, 8, COLOR_JAUNE);
+            }
+        }
+
+        function dessinerBlocBonus(b) {
+            let bx = b[0], by = b[1], typeB = b[2];
+            let coul = typeB === "VIE" ? COLOR_VERT_GOBELIN : (typeB === "SPEED" ? COLOR_JAUNE : (typeB === "ATK" ? COLOR_ROUGE : COLOR_CYAN));
+            fillRect(bx, by, 10, 10, coul);
+            fillRect(bx + 2, by + 2, 6, 6, COLOR_BLANC);
+        }
+
+        function afficherInterface(boss = null) {
+            // Header Bar
+            fillRect(0, 0, LARGEUR, 20, COLOR_NOIR);
+            drawString("PV:" + Math.max(0, Math.floor(pv)) + "/" + pvMax, 5, 5, COLOR_ROUGE);
+            drawString("Vague:" + vague, 120, 5, COLOR_BLANC);
+            drawString("Or:" + orJoueur + "g", 230, 5, COLOR_JAUNE);
+
+            // Boss Health Bar
+            if (boss !== null) {
+                let pvBoss = boss[2], pvBossMax = boss[5];
+                let ratio = Math.max(0, pvBoss / pvBossMax);
+                fillRect(80, 22, 160, 6, COLOR_GRIS_FONCE);
+                fillRect(80, 22, Math.floor(160 * ratio), 6, COLOR_ROUGE);
+            }
+
+            // Bottom Skill Gauge Bar
+            fillRect(0, HAUTEUR - 20, LARGEUR, 20, COLOR_NOIR);
+            drawString("Dash:0", 5, 222, COLOR_GRIS);
+
+            function dessinerJauge(x, cd, maxCd, nom, coul, debloque) {
+                fillRect(x, 224, 30, 10, COLOR_GRIS_FONCE);
+                if (!debloque) {
+                    drawString("X", x + 10, 222, COLOR_ROUGE, COLOR_GRIS_FONCE);
+                } else {
+                    if (maxCd > 0) {
+                        let ratio = Math.max(0, (maxCd - cd) / maxCd);
+                        fillRect(x, 224, Math.floor(30 * ratio), 10, coul);
+                    }
+                    drawString(nom, x + 8, 222, COLOR_NOIR, cd === 0 ? coul : COLOR_GRIS);
+                }
+            }
+
+            dessinerJauge(80, cd1, maxCd1, "1", COLOR_BLEU, sk1Debloque);
+            dessinerJauge(140, cd2, maxCd2, "2", COLOR_VERT_GOBELIN, sk2Debloque);
+            dessinerJauge(200, cd3, maxCd3, "3", COLOR_ORANGE, sk3Debloque);
+
+            // Ultimate Indicator
+            let coulUlt = ultiDebloque ? COLOR_VIOLET : COLOR_GRIS_FONCE;
+            fillRect(260, 224, 50, 10, coulUlt);
+            drawString("ULT", 270, 222, ultiDebloque ? COLOR_BLANC : COLOR_GRIS, coulUlt);
+        }
+
+        function genererMonstres(nb, vague) {
+            let mList = [];
+            if (vague % 5 === 0) {
+                let pvBoss = 200 + vague * 50;
+                mList.push([Math.floor(LARGEUR / 2) - 12, 40, pvBoss, "BOSS", 0, pvBoss]);
+                return mList;
+            }
+
+            let types = ["Gobelin"];
+            if (vague >= 2) types.push("Sorcier");
+            if (vague >= 3) types.push("Orc");
+
+            for (let i = 0; i < nb; i++) {
+                let t = types[Math.floor(Math.random() * types.length)];
+                let mx = Math.floor(Math.random() * (LARGEUR - 30)) + 10;
+                let my = Math.random() < 0.5 ? 30 : HAUTEUR - 40;
+                let basePv = t === "Gobelin" ? 12 : (t === "Orc" ? 30 : 18);
+                let totalPv = basePv + vague * 4;
+                mList.push([mx, my, totalPv, t, 0, totalPv]);
+            }
+            return mList;
+        }
+
+        function tirerBase(dx, dy, degats, taille, couleur, duree, vit = 6) {
+            let mult = mulDegats * (boostDegatsTimer > 0 ? 2.0 : 1.0);
+            let deg = Math.floor(degats * mult);
+            projectiles.push([px + 4, py + 4, dx * vit, dy * vit, deg, taille, couleur, duree + porteeBonus]);
+            playSound('shoot');
+        }
+
+        function lancerAttaque(degats, taille, couleur, duree, vit = 6) {
+            // Dir 1: Front
+            tirerBase(dirX, dirY, degats, taille, couleur, duree, vit);
+            // Dir 2: Back
+            if (nbTirs >= 2) {
+                tirerBase(dirX !== 0 ? -dirX : 1, dirY !== 0 ? -dirY : 1, degats, taille, couleur, duree, vit);
+            }
+            // Dir 3: Up
+            if (nbTirs >= 3) {
+                tirerBase(0, -1, degats, taille, couleur, duree, vit);
+            }
+            // Dir 4: Down
+            if (nbTirs >= 4) {
+                tirerBase(0, 1, degats, taille, couleur, duree, vit);
+            }
+        }
+
+        function déclencherUltime() {
+            if (!ultiDebloque) return;
+            playSound('ult');
+            for (let m of monstres) {
+                m[2] = 0;
+                let gain = m[3] === "BOSS" ? 100 : 15;
+                orJoueur += gain;
+                popups.push(["+" + gain + "g", m[0], m[1], 8, COLOR_JAUNE]);
+            }
+
+            // Visual effect based on weapon
+            if (menuSelectedWeapon === "Baton") {
+                // Purple growing black hole
+                for (let r = 10; r < 80; r += 10) {
+                    fillRect(px - Math.floor(r / 2), py - Math.floor(r / 2), r, r, COLOR_VIOLET);
+                }
+            } else if (menuSelectedWeapon === "Epee") {
+                // Screen flashes
+                fillRect(0, 20, LARGEUR, HAUTEUR - 40, COLOR_BLANC);
+                setTimeout(() => {
+                    fillRect(0, 20, LARGEUR, HAUTEUR - 40, COLOR_CYAN);
+                }, 50);
+            } else if (menuSelectedWeapon === "Arc") {
+                // Rain of arrows
+                for (let i = 0; i < 20; i++) {
+                    let rx = Math.floor(Math.random() * (LARGEUR - 20)) + 10;
+                    let ry = Math.floor(Math.random() * (HAUTEUR - 60)) + 30;
+                    fillRect(rx, ry, 3, 12, COLOR_GRIS);
+                }
+            }
+
+            setTimeout(() => {
+                dessinerDecorComplet();
+                monstres = [];
+            }, 100);
+        }
+
+        function handleGlobalKeyPress(code, key) {
+            if (gameState === 'MENU') {
+                if (code === 'Digit1' || code === 'Numpad1') startNewGame('Epee');
+                else if (code === 'Digit2' || code === 'Numpad2') startNewGame('Arc');
+                else if (code === 'Digit3' || code === 'Numpad3') startNewGame('Baton');
+            } else if (gameState === 'SHOP') {
+                handleShopInput(code, key);
+            } else if (gameState === 'GAMEOVER') {
+                if (code === 'Enter' || code === 'Space' || code === 'KeyE') {
+                    gameState = 'MENU';
+                }
+            }
+        }
+
+        function handleShopInput(code, key) {
+            if (code === 'Enter' || code === 'KeyE' || code === 'Space') {
+                shopPage = shopPage === 1 ? 2 : 1;
+                playSound('buy');
+                return;
+            }
+            if (code === 'Backspace' || code === 'Escape') {
+                fermerBoutique();
+                return;
+            }
+
+            if (shopPage === 1) {
+                if ((code === 'Digit1' || code === 'Numpad1') && orJoueur >= 20 && pv < pvMax) {
+                    orJoueur -= 20;
+                    pv = Math.min(pvMax, pv + 25);
+                    playSound('buy');
+                } else if ((code === 'Digit2' || code === 'Numpad2') && orJoueur >= 35 && pv < pvMax) {
+                    orJoueur -= 35;
+                    pv = pvMax;
+                    playSound('buy');
+                } else if ((code === 'Digit3' || code === 'Numpad3') && orJoueur >= 30) {
+                    orJoueur -= 30;
+                    pvMax += 20;
+                    pv += 20;
+                    playSound('buy');
+                } else if ((code === 'Digit4' || code === 'Numpad4') && orJoueur >= 40) {
+                    orJoueur -= 40;
+                    mulDegats += 0.2;
+                    playSound('buy');
+                } else if ((code === 'Digit5' || code === 'Numpad5') && nbTirs < 4 && orJoueur >= (nbTirs * 100)) {
+                    orJoueur -= (nbTirs * 100);
+                    nbTirs += 1;
+                    playSound('buy');
+                } else if ((code === 'Digit6' || code === 'Numpad6') && orJoueur >= 30) {
+                    orJoueur -= 30;
+                    porteeBonus += 5;
+                    playSound('buy');
+                }
+            } else { // Page 2
+                if ((code === 'Digit1' || code === 'Numpad1') && orJoueur >= 30 && !sk1Debloque) {
+                    orJoueur -= 30;
+                    sk1Debloque = true;
+                    playSound('buy');
+                } else if ((code === 'Digit2' || code === 'Numpad2') && orJoueur >= 50 && !sk2Debloque) {
+                    orJoueur -= 50;
+                    sk2Debloque = true;
+                    playSound('buy');
+                } else if ((code === 'Digit3' || code === 'Numpad3') && orJoueur >= 80 && !sk3Debloque) {
+                    orJoueur -= 80;
+                    sk3Debloque = true;
+                    playSound('buy');
+                } else if ((code === 'Digit4' || code === 'Numpad4') && orJoueur >= 1000 && !ultiDebloque) {
+                    orJoueur -= 1000;
+                    ultiDebloque = true;
+                    playSound('buy');
+                }
+            }
+        }
+
+        function fermerBoutique() {
+            gameState = 'GAME';
+            dessinerDecorComplet();
+        }
+
+        function startNewGame(weapon) {
+            menuSelectedWeapon = weapon;
+            px = 150; py = 110;
+            pvMax = 100; pv = pvMax;
+            vitesseBase = 3;
+            mulDegats = 1.0;
+            porteeBonus = 0;
+            orJoueur = 20;
+            nbTirs = 1;
+
+            sk1Debloque = false;
+            sk2Debloque = false;
+            sk3Debloque = false;
+            ultiDebloque = false;
+
+            boostVitesseTimer = 0;
+            boostDegatsTimer = 0;
+            gelMonstresTimer = 0;
+
+            cd1 = 0; cd2 = 0; cd3 = 0; cdDash = 0;
+            maxCd1 = 15;
+            maxCd2 = weapon !== "Baton" ? 30 : 45;
+            maxCd3 = 50;
+
+            vague = 1;
+            monstres = genererMonstres(3, vague);
+            blocsBonus = [];
+            projectiles = [];
+            projEnnemis = [];
+            popups = [];
+
+            // Open shop at start of game just as original python code does
+            gameState = 'SHOP';
+            shopPage = 1;
+        }
+
+        function renderMenu() {
+            fillRect(0, 0, LARGEUR, HAUTEUR, COLOR_NOIR);
+            drawString("=== FORET MAGIQUE ===", 50, 20, COLOR_BLANC);
+            drawString("1. Epee (Tranchant)", 30, 70, COLOR_BLEU);
+            drawString("2. Arc (Fleches)", 30, 100, COLOR_VERT_GOBELIN);
+            drawString("3. Baton (Boules de feu)", 30, 130, COLOR_JAUNE);
+            drawString("Appuie sur 1, 2 ou 3...", 40, 180, COLOR_GRIS);
+        }
+
+        function renderShop() {
+            fillRect(0, 0, LARGEUR, HAUTEUR, COLOR_NOIR);
+            drawString("=== BOUTIQUE (Or: " + orJoueur + "g) ===", 10, 5, COLOR_JAUNE);
+
+            if (shopPage === 1) {
+                drawString("--- STATS & TIR (1/2) ---", 10, 25, COLOR_GRIS);
+                drawString("1. Soin +25 PV (20g)", 10, 45, COLOR_VERT_GOBELIN);
+                drawString("2. Soin Max (35g)", 10, 65, COLOR_VERT_GOBELIN);
+                drawString("3. +20 PV Max (30g)", 10, 85, COLOR_BLEU);
+                drawString("4. +20% Degats (40g)", 10, 105, COLOR_ROUGE);
+
+                let prixTir = nbTirs < 4 ? (nbTirs * 100) + "g" : "MAX";
+                drawString("5. +1 Dir. Tir (" + prixTir + ")", 10, 125, COLOR_CYAN);
+                drawString("6. +Portee (30g)", 10, 145, COLOR_ORANGE);
+                drawString("ENTER: Page 2 | BACKSPACE: Fermer", 10, 210, COLOR_GRIS);
+            } else {
+                drawString("--- SORTS & ULTIME (2/2) ---", 10, 25, COLOR_GRIS);
+                let strSk1 = sk1Debloque ? "ACQUIS" : "30g";
+                let strSk2 = sk2Debloque ? "ACQUIS" : "50g";
+                let strSk3 = sk3Debloque ? "ACQUIS" : "80g";
+                let strUlt = ultiDebloque ? "ACQUIS" : "1000g";
+
+                drawString("1. Sort 1 (" + strSk1 + ")", 10, 50, COLOR_BLEU);
+                drawString("2. Sort 2 (" + strSk2 + ")", 10, 75, COLOR_VERT_GOBELIN);
+                drawString("3. Sort 3 (" + strSk3 + ")", 10, 100, COLOR_ORANGE);
+                drawString("4. ULTIME SHIFT (" + strUlt + ")", 10, 130, COLOR_VIOLET);
+                drawString("ENTER: Page 1 | BACKSPACE: Fermer", 10, 210, COLOR_GRIS);
+            }
+        }
+
+        let attackKeyHeld = false;
+
+        function updateAndRenderGame() {
+            effacerZone(px, py, 10, 16);
+
+            // Random Bonus Block spawn
+            if (Math.floor(Math.random() * 120) === 0 && blocsBonus.length < 3) {
+                let typesB = ["VIE", "SPEED", "ATK", "GEL"];
+                let bx = Math.floor(Math.random() * (LARGEUR - 50)) + 20;
+                let by = Math.floor(Math.random() * (HAUTEUR - 80)) + 30;
+                blocsBonus.push([bx, by, typesB[Math.floor(Math.random() * 4)]]);
+            }
+
+            // Movement & Dash logic
+            let dx = 0, dy = 0;
+            let vActuelle = vitesseBase + (boostVitesseTimer > 0 ? 2 : 0);
+
+            if ((keys['Numpad0'] || keys['Digit0'] || keys['Space']) && cdDash <= 0) {
+                vActuelle *= 2.5;
+                cdDash = 20;
+            }
+
+            if ((keys['ArrowLeft'] || keys['KeyA']) && px > 5) dx -= vActuelle;
+            if ((keys['ArrowRight'] || keys['KeyD']) && px < LARGEUR - 15) dx += vActuelle;
+            if ((keys['ArrowUp'] || keys['KeyW']) && py > 25) dy -= vActuelle;
+            if ((keys['ArrowDown'] || keys['KeyS']) && py < HAUTEUR - 38) dy += vActuelle;
+
+            px += Math.floor(dx);
+            py += Math.floor(dy);
+
+            if (dx !== 0 || dy !== 0) {
+                dirX = dx > 0 ? 1 : (dx < 0 ? -1 : 0);
+                dirY = dy > 0 ? 1 : (dy < 0 ? -1 : 0);
+            }
+
+            // Bonus Blocks Collection
+            let nouveauxBlocs = [];
+            for (let b of blocsBonus) {
+                if (Math.abs(px - b[0]) < 12 && Math.abs(py - b[1]) < 12) {
+                    effacerZone(b[0], b[1], 10, 10);
+                    playSound('powerup');
+                    if (b[2] === "VIE") {
+                        pv = Math.min(pvMax, pv + 25);
+                        popups.push(["+25 PV", px, py - 5, 8, COLOR_VERT_GOBELIN]);
+                    } else if (b[2] === "SPEED") {
+                        boostVitesseTimer = 150;
+                        popups.push(["SPEED!", px, py - 5, 8, COLOR_JAUNE]);
+                    } else if (b[2] === "ATK") {
+                        boostDegatsTimer = 150;
+                        popups.push(["ATK x2!", px, py - 5, 8, COLOR_ROUGE]);
+                    } else if (b[2] === "GEL") {
+                        gelMonstresTimer = 120;
+                        popups.push(["GEL!", px, py - 5, 8, COLOR_CYAN]);
+                    }
+                } else {
+                    dessinerBlocBonus(b);
+                    nouveauxBlocs.push(b);
+                }
+            }
+            blocsBonus = nouveauxBlocs;
+
+            // Trigger Standard Attacks
+            let isAttacking = keys['KeyE'] || keys['Enter'];
+            if (isAttacking && !attackKeyHeld) {
+                if (menuSelectedWeapon === "Epee") lancerAttaque(15, 6, COLOR_CYAN, 3, 4);
+                else if (menuSelectedWeapon === "Arc") lancerAttaque(12, 3, COLOR_GRIS, 12, 8);
+                else if (menuSelectedWeapon === "Baton") lancerAttaque(10, 5, COLOR_ORANGE, 10, 5);
+            }
+            attackKeyHeld = isAttacking;
+
+            // Ultimate (Shift Key)
+            if ((keys['ShiftLeft'] || keys['ShiftRight'])) {
+                déclencherUltime();
+                keys['ShiftLeft'] = false; keys['ShiftRight'] = false;
+            }
+
+            // Skills Trigger
+            if ((keys['Digit1'] || keys['Numpad1']) && cd1 <= 0 && sk1Debloque) {
+                cd1 = maxCd1;
+                if (menuSelectedWeapon === "Epee") lancerAttaque(25, 8, COLOR_BLEU, 4, 5);
+                else if (menuSelectedWeapon === "Arc") lancerAttaque(15, 3, COLOR_GRIS, 12, 8);
+                else if (menuSelectedWeapon === "Baton") lancerAttaque(30, 8, COLOR_ROUGE, 12, 6);
+            }
+
+            if ((keys['Digit2'] || keys['Numpad2']) && cd2 <= 0 && sk2Debloque) {
+                cd2 = maxCd2;
+                if (menuSelectedWeapon === "Epee") lancerAttaque(50, 10, COLOR_BLANC, 5, 7);
+                else if (menuSelectedWeapon === "Arc") lancerAttaque(20, 3, COLOR_GRIS, 12, 9);
+                else if (menuSelectedWeapon === "Baton") {
+                    pv = Math.min(pvMax, pv + 30);
+                    playSound('powerup');
+                }
+            }
+
+            if ((keys['Digit3'] || keys['Numpad3']) && cd3 <= 0 && sk3Debloque) {
+                cd3 = maxCd3;
+                if (menuSelectedWeapon === "Epee") {
+                    for (let [vx, vy] of [[1,0], [-1,0], [0,1], [0,-1]]) {
+                        tirerBase(vx, vy, 60, 10, COLOR_JAUNE, 6, 6);
+                    }
+                } else if (menuSelectedWeapon === "Arc") {
+                    for (let [vx, vy] of [[1,0], [-1,0], [0,1], [0,-1], [1,1], [-1,-1]]) {
+                        tirerBase(vx, vy, 40, 4, COLOR_BLANC, 15, 10);
+                    }
+                } else if (menuSelectedWeapon === "Baton") {
+                    for (let vx of [-1, 0, 1]) {
+                        for (let vy of [-1, 0, 1]) {
+                            if (vx !== 0 || vy !== 0) {
+                                tirerBase(vx, vy, 45, 10, COLOR_ROUGE, 12, 5);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Player Projectiles Processing
+            let nouveauxProj = [];
+            for (let p of projectiles) {
+                effacerZone(p[0], p[1], p[5], p[5]);
+                p[0] += p[2];
+                p[1] += p[3];
+                p[7] -= 1;
+
+                let toucher = false;
+                for (let m of monstres) {
+                    let tailleM = m[3] === "BOSS" ? 24 : 12;
+                    if (Math.abs(p[0] - m[0]) < tailleM && Math.abs(p[1] - m[1]) < tailleM) {
+                        m[2] -= p[4];
+                        toucher = true;
+                        popups.push([p[4].toString(), Math.floor(m[0]), Math.floor(m[1]) - 5, 5, COLOR_JAUNE]);
+                        playSound('hit');
+                    }
+                }
+
+                if (!toucher && p[7] > 0 && p[0] > 5 && p[0] < LARGEUR - 10 && p[1] > 22 && p[1] < HAUTEUR - 25) {
+                    fillRect(p[0], p[1], p[5], p[5], p[6]);
+                    nouveauxProj.push(p);
+                }
+            }
+            projectiles = nouveauxProj;
+
+            // Enemy Projectiles Processing
+            let nouveauxPe = [];
+            for (let pe of projEnnemis) {
+                effacerZone(pe[0], pe[1], 5, 5);
+                pe[0] += pe[2];
+                pe[1] += pe[3];
+                pe[4] -= 1;
+
+                if (Math.abs(pe[0] - px) < 8 && Math.abs(pe[1] - py) < 8) {
+                    pv -= 6;
+                    popups.push(["-6", px, py - 5, 5, COLOR_ROUGE]);
+                    playSound('hit');
+                } else if (pe[4] > 0 && pe[0] > 5 && pe[0] < LARGEUR - 10 && pe[1] > 22 && pe[1] < HAUTEUR - 25) {
+                    fillRect(pe[0], pe[1], 5, 5, COLOR_VIOLET);
+                    nouveauxPe.push(pe);
+                }
+            }
+            projEnnemis = nouveauxPe;
+
+            // Monsters Processing
+            let nouveauxMonstres = [];
+            let pvPerdus = 0;
+
+            for (let m of monstres) {
+                let tailleM = m[3] === "BOSS" ? 24 : 12;
+                effacerZone(m[0], m[1], tailleM, tailleM);
+
+                if (m[2] <= 0) {
+                    let gain = m[3] === "BOSS" ? 100 : (m[3] === "Gobelin" ? 12 : (m[3] === "Orc" ? 25 : 18));
+                    orJoueur += gain;
+                    popups.push(["+" + gain + "g", m[0], m[1], 8, COLOR_JAUNE]);
+                    continue;
+                }
+
+                if (gelMonstresTimer <= 0) {
+                    let vit = m[3] === "BOSS" ? 1 : (m[3] === "Gobelin" ? 2 : 1);
+                    if (m[0] < px) m[0] += vit;
+                    else if (m[0] > px) m[0] -= vit;
+                    if (m[1] < py) m[1] += vit;
+                    else if (m[1] > py) m[1] -= vit;
+
+                    if (m[3] === "Sorcier") {
+                        m[4] += 1;
+                        if (m[4] >= 30) {
+                            m[4] = 0;
+                            let vx = px > m[0] ? 3 : (px < m[0] ? -3 : 0);
+                            let vy = py > m[1] ? 3 : (py < m[1] ? -3 : 0);
+                            projEnnemis.push([m[0], m[1], vx, vy, 18]);
+                        }
+                    } else if (m[3] === "BOSS") {
+                        m[4] += 1;
+                        if (m[4] >= 20) {
+                            m[4] = 0;
+                            let vx = px > m[0] ? 3 : (px < m[0] ? -3 : 0);
+                            let vy = py > m[1] ? 3 : (py < m[1] ? -3 : 0);
+                            projEnnemis.push([m[0] + 10, m[1] + 10, vx, vy, 25]);
+                            projEnnemis.push([m[0] + 10, m[1] + 10, vx + 1, vy - 1, 25]);
+                            projEnnemis.push([m[0] + 10, m[1] + 10, vx - 1, vy + 1, 25]);
+                        }
+                    }
+                }
+
+                let rangeContact = m[3] === "BOSS" ? 16 : 8;
+                if (Math.abs(px - m[0]) < rangeContact && Math.abs(py - m[1]) < rangeContact) {
+                    pvPerdus += (m[3] === "BOSS" ? 3 : 1);
+                }
+
+                dessinerMonstre(m);
+                nouveauxMonstres.push(m);
+            }
+            monstres = nouveauxMonstres;
+
+            if (pvPerdus > 0) {
+                pv -= pvPerdus;
+                popups.push(["-" + pvPerdus, px, py - 5, 4, COLOR_ROUGE]);
+            }
+
+            // Popups Floating Text
+            let nouveauxPopups = [];
+            for (let pop of popups) {
+                drawString(pop[0], pop[1], pop[2], pop[4], COLOR_VERT_HERBE);
+                pop[2] -= 1;
+                pop[3] -= 1;
+                if (pop[3] > 0) {
+                    drawString(pop[0], pop[1], pop[2], pop[4], COLOR_VERT_HERBE);
+                    nouveauxPopups.push(pop);
+                } else {
+                    effacerZone(pop[1], pop[2], pop[0].length * 10, 10);
+                }
+            }
+            popups = nouveauxPopups;
+
+            // Y-sorting for Depth Rendering
+            let toutesEntites = [['joueur', py + 16]];
+            for (let m of monstres) {
+                let tailleM = m[3] === "BOSS" ? 24 : 12;
+                toutesEntites.push(['monstre', m[1] + tailleM]);
+            }
+
+            dessinerStickman(px, py, COLOR_BLEU);
+
+            for (let [ax, ay] of ARBRES) {
+                let troncY = ay + 30;
+                for (let [entType, entY] of toutesEntites) {
+                    if (entY < troncY) {
+                        dessinerArbre(ax, ay);
+                        break;
+                    }
+                }
+            }
+
+            // Wave Clear & Shop Trigger
+            if (monstres.length === 0) {
+                vague += 1;
+                gameState = 'SHOP';
+                shopPage = 1;
+                blocsBonus = [];
+                projectiles = [];
+                projEnnemis = [];
+                dessinerDecorComplet();
+                monstres = genererMonstres(2 + vague * 2, vague);
+                return;
+            }
+
+            // Timers & Cooldowns
+            if (boostVitesseTimer > 0) boostVitesseTimer--;
+            if (boostDegatsTimer > 0) boostDegatsTimer--;
+            if (gelMonstresTimer > 0) gelMonstresTimer--;
+
+            if (cd1 > 0) cd1--;
+            if (cd2 > 0) cd2--;
+            if (cd3 > 0) cd3--;
+            if (cdDash > 0) cdDash--;
+
+            // Check Game Over
+            if (pv <= 0) {
+                gameState = 'GAMEOVER';
+                return;
+            }
+
+            let bossActuel = (monstres.length > 0 && monstres[0][3] === "BOSS") ? monstres[0] : null;
+            afficherInterface(bossActuel);
+        }
+
+        function renderGameOver() {
+            fillRect(0, 0, LARGEUR, HAUTEUR, COLOR_NOIR);
+            drawString("GAME OVER", 110, 90, COLOR_ROUGE);
+            drawString("Vagues survecues : " + (vague - 1), 50, 120, COLOR_BLANC);
+            drawString("Appuie sur Entree...", 60, 160, COLOR_GRIS);
+        }
+
+        document.getElementById('btnAtk').addEventListener('click', () => {
+            initAudio();
+            if (gameState === 'GAME') {
+                if (menuSelectedWeapon === "Epee") lancerAttaque(15, 6, COLOR_CYAN, 3, 4);
+                else if (menuSelectedWeapon === "Arc") lancerAttaque(12, 3, COLOR_GRIS, 12, 8);
+                else if (menuSelectedWeapon === "Baton") lancerAttaque(10, 5, COLOR_ORANGE, 10, 5);
+            }
+        });
+
+        document.getElementById('btnSk1').addEventListener('click', () => {
+            initAudio();
+            handleGlobalKeyPress('Digit1', '1');
+        });
+
+        document.getElementById('btnSk2').addEventListener('click', () => {
+            initAudio();
+            handleGlobalKeyPress('Digit2', '2');
+        });
+
+        document.getElementById('btnSk3').addEventListener('click', () => {
+            initAudio();
+            handleGlobalKeyPress('Digit3', '3');
+        });
+
+        document.getElementById('btnUlt').addEventListener('click', () => {
+            initAudio();
+            if (gameState === 'GAME') déclencherUltime();
+        });
+
+        // Click on Canvas to interact with Menu/Shop items seamlessly
+        canvas.addEventListener('click', (e) => {
+            initAudio();
+            const rect = canvas.getBoundingClientRect();
+            const clickY = e.clientY - rect.top;
+            const ratioY = clickY / rect.height;
+
+            if (gameState === 'MENU') {
+                if (ratioY < 0.4) startNewGame('Epee');
+                else if (ratioY < 0.6) startNewGame('Arc');
+                else startNewGame('Baton');
+            } else if (gameState === 'SHOP') {
+                if (ratioY > 0.85) {
+                    fermerBoutique();
+                } else {
+                    shopPage = shopPage === 1 ? 2 : 1;
+                    playSound('buy');
+                }
+            } else if (gameState === 'GAME') {
+                if (menuSelectedWeapon === "Epee") lancerAttaque(15, 6, COLOR_CYAN, 3, 4);
+                else if (menuSelectedWeapon === "Arc") lancerAttaque(12, 3, COLOR_GRIS, 12, 8);
+                else if (menuSelectedWeapon === "Baton") lancerAttaque(10, 5, COLOR_ORANGE, 10, 5);
+            } else if (gameState === 'GAMEOVER') {
+                gameState = 'MENU';
+            }
+        });
+
+        function gameLoop() {
+            if (gameState === 'MENU') {
+                renderMenu();
+            } else if (gameState === 'SHOP') {
+                renderShop();
+            } else if (gameState === 'GAME') {
+                updateAndRenderGame();
+            } else if (gameState === 'GAMEOVER') {
+                renderGameOver();
+            }
+            setTimeout(gameLoop, 20); // ~50 FPS matching NumWorks loop speed
+        }
+
+        window.onload = function() {
+            gameLoop();
+        };
+    </script>
 </body>
 </html>
